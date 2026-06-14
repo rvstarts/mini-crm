@@ -20,7 +20,7 @@ import {
   type EdgeProps
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Sparkles, MessageSquare, Mail, Users, Clock, Split, Save, FileText, Play, Settings, Bell, Search, LayoutDashboard, ChevronDown, User, GitMerge, ShoppingCart, Star, Zap, UserMinus, Box, CheckCircle, FolderOpen, Plus } from 'lucide-react';
+import { Sparkles, MessageSquare, Mail, Users, Clock, Split, Save, FileText, Play, Settings, Bell, LayoutDashboard, GitMerge, ShoppingCart, Star, Zap, UserMinus, Box, CheckCircle, FolderOpen, Plus } from 'lucide-react';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 
@@ -235,7 +235,7 @@ const DelayNode = ({ data }: any) => {
   );
 };
 
-const EndNode = ({ data }: any) => {
+const EndNode = ({ _data }: any) => {
   return (
     <div className="bg-white rounded-xl border-2 border-slate-200 border-dashed w-64 p-3 flex items-center justify-center relative shadow-sm">
       <Handle type="target" position={Position.Top} className="w-3 h-3 bg-blue-400 border-2 border-white shadow-sm" />
@@ -280,7 +280,6 @@ const edgeTypes = {
 // --- MAIN COMPONENT ---
 
 function JourneyBuilder() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const urlJourneyId = searchParams.get('id');
 
@@ -330,6 +329,7 @@ function JourneyBuilder() {
       }
     };
     fetchDrafts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // POLLING FOR ACTIVE DASHBOARD
@@ -356,7 +356,7 @@ function JourneyBuilder() {
     try {
       const res = await api.get(`/journeys/${id}`);
       setDashboardData(res.data);
-    } catch (err) {
+    } catch (_err) {
       showNotification("Failed to load dashboard.", "error");
     }
   };
@@ -368,7 +368,7 @@ function JourneyBuilder() {
       setActiveDashboardId(null);
       const resDrafts = await api.get('/journeys/');
       setDraftsList(resDrafts.data);
-    } catch(e) {
+    } catch (_e) {
       showNotification("Failed to pause.", "error");
     }
   };
@@ -381,7 +381,7 @@ function JourneyBuilder() {
       setActiveDashboardId(null);
       const resDrafts = await api.get('/journeys/');
       setDraftsList(resDrafts.data);
-    } catch(e) {
+    } catch (_e) {
       showNotification("Failed to delete.", "error");
     }
   };
@@ -480,7 +480,7 @@ function JourneyBuilder() {
       } else {
         showNotification("Failed to parse AI journey.", "error");
       }
-    } catch(e) {
+    } catch (_e) {
       showNotification("Failed to generate AI journey.", "error");
     } finally {
       setIsGeneratingAI(false);
@@ -506,7 +506,6 @@ function JourneyBuilder() {
       edges_json: edges
     };
     
-    const method = journeyId ? 'PUT' : 'POST';
     const url = journeyId ? `/journeys/${journeyId}` : `/journeys/`;
     
     try {
@@ -571,7 +570,7 @@ function JourneyBuilder() {
           const resDrafts = await api.get('/journeys/');
           setDraftsList(resDrafts.data);
           setActiveTab("Active Journeys");
-        } catch (e) {
+        } catch (_e) {
           showNotification("Failed to activate journey.", "error");
         }
       }
@@ -1258,7 +1257,7 @@ function JourneyBuilder() {
                     if (n.type === 'abtest') return '#a855f7';
                     return '#cbd5e1';
                   }}
-                  nodeColor={(n) => {
+                  nodeColor={(_n) => {
                     return '#ffffff';
                   }}
                   maskColor="rgba(248, 250, 252, 0.7)"

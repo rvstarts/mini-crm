@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import axios from "axios"
-import { ShoppingBag, TrendingUp, Receipt, CornerUpLeft, Sparkles, ArrowRight } from "lucide-react"
+import { ShoppingBag, TrendingUp, Receipt, CornerUpLeft } from "lucide-react"
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts"
 import { OrderWithCustomer, columns } from "@/features/orders/columns"
 import { DataTable } from "@/features/orders/data-table"
