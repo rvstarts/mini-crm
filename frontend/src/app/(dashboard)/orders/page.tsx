@@ -5,8 +5,7 @@ import { ShoppingBag, TrendingUp, Receipt, CornerUpLeft } from "lucide-react"
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts"
 import { OrderWithCustomer, columns } from "@/features/orders/columns"
 import { DataTable } from "@/features/orders/data-table"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
+
 
 const categoryData = [
   { name: "Electronics", value: 35, color: "#3B82F6" },

@@ -1,6 +1,6 @@
 "use client"
 import { useState, useRef, useEffect } from "react"
-import { User, Bell, Shield, Plug, CheckCircle2, Sparkles, Activity, MessageSquare, Mail, Database, Loader2, Key, History, Laptop, AlertCircle, BrainCircuit, Sliders } from "lucide-react"
+import { User, Bell, Shield, Plug, CheckCircle2, Sparkles, Activity, MessageSquare, Mail, Database, Loader2, Key, History, Laptop, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { useUser } from "@/contexts/UserContext"
@@ -8,7 +8,7 @@ import { useUser } from "@/contexts/UserContext"
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile")
   const [isSaving, setIsSaving] = useState(false)
-  const [isLoaded, setIsLoaded] = useState(false)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const { profile: globalProfile, updateProfile } = useUser()
@@ -86,11 +86,9 @@ export default function SettingsPage() {
       if (data.channelService) setChannelService(data.channelService);
       if (data.notifications) setNotifications(data.notifications);
       if (data.aiLearning) setAiLearning(data.aiLearning);
-      setIsLoaded(true);
     })
     .catch(err => {
       console.error(err);
-      setIsLoaded(true);
     });
 
     fetch("http://localhost:5000/api/settings/security/api-key", {
@@ -146,7 +144,7 @@ export default function SettingsPage() {
       });
       if (!res.ok) throw new Error("Failed to save config");
       toast.success(message);
-    } catch (err) {
+    } catch {
       toast.error("An error occurred while saving.");
     } finally {
       setIsSaving(false);

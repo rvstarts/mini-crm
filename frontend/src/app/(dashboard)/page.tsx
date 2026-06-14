@@ -7,23 +7,16 @@ import { useUser } from '@/contexts/UserContext';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { 
-  Users, Send, TrendingUp, Calendar, ArrowUpRight, ArrowRight, MoreVertical, 
-  AlertCircle, Loader2, ChevronDown, CheckCircle2, Clock, Zap, Target, 
-  ArrowDownRight, Activity, DollarSign, Sparkles, Eye, Copy, Mail,
-  MessageSquare, LayoutDashboard
+  Users, Send, TrendingUp, ArrowRight,
+  AlertCircle, Loader2, Clock, Zap, Target,
+  Activity, DollarSign, Sparkles, LayoutDashboard
 } from 'lucide-react';
 import { 
-  BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, 
-  LineChart, Line, CartesianGrid, PieChart, Pie, Cell, AreaChart, Area, ComposedChart
+  XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, 
+  CartesianGrid, PieChart, Pie, AreaChart, Area, ComposedChart, Line
 } from 'recharts';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function DashboardOverview() {
   const { profile } = useUser();
@@ -161,7 +154,7 @@ export default function DashboardOverview() {
                 toast.success(`Segment created successfully for ${insights.churn_risk.count} users!`);
                 queryClient.invalidateQueries({ queryKey: ['segments'] });
                 router.push('/segments');
-              } catch(e) {
+              } catch {
                 toast.error("Failed to generate segment");
               }
             }}
@@ -182,7 +175,7 @@ export default function DashboardOverview() {
                 queryClient.invalidateQueries({ queryKey: ['campaigns'] });
                 queryClient.invalidateQueries({ queryKey: ['analytics', 'dashboard'] });
                 router.push('/campaigns');
-              } catch(e) {
+              } catch {
                 toast.error("Failed to launch campaign");
               }
             }}
@@ -358,7 +351,7 @@ export default function DashboardOverview() {
             <div className="absolute left-[75px] top-2 bottom-4 w-px bg-slate-100"></div>
             {activityFeed?.map((log: any, idx: number) => {
               const actionLower = log.action.toLowerCase();
-              const isDelivered = actionLower.includes('delivered') || actionLower.includes('sent');
+
               const isOpened = actionLower.includes('opened');
               const isClicked = actionLower.includes('clicked');
               const isRedeemed = actionLower.includes('redeemed');
@@ -689,7 +682,7 @@ export default function DashboardOverview() {
                       toast.success(`Action executed successfully!`);
                       router.push('/campaigns');
                     }
-                  } catch (e) {
+                  } catch {
                     toast.error("Failed to execute action");
                   } finally {
                     setSelectedRecommendation(null);

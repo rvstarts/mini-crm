@@ -77,24 +77,28 @@ def _build_rules_query(rules):
             try:
                 v = float(value)
                 if operator in ["equals", "Equals"]: query = query.filter(Customer.total_spend == v)
-                elif operator in [">", ">=", "Is greater than"]: query = query.filter(Customer.total_spend >= v)
-                elif operator in ["<", "<=", "Is less than"]: query = query.filter(Customer.total_spend <= v)
+                elif operator in [">", "Is greater than"]: query = query.filter(Customer.total_spend > v)
+                elif operator in [">="]: query = query.filter(Customer.total_spend >= v)
+                elif operator in ["<", "Is less than"]: query = query.filter(Customer.total_spend < v)
+                elif operator in ["<="]: query = query.filter(Customer.total_spend <= v)
             except: pass
             
         elif field in ["order_count", "Order Count"]:
             try:
                 v = int(value)
                 if operator in ["equals", "Equals"]: query = query.filter(Customer.order_count == v)
-                elif operator in [">", ">=", "Is greater than"]: query = query.filter(Customer.order_count >= v)
-                elif operator in ["<", "<=", "Is less than"]: query = query.filter(Customer.order_count <= v)
+                elif operator in [">", "Is greater than"]: query = query.filter(Customer.order_count > v)
+                elif operator in [">="]: query = query.filter(Customer.order_count >= v)
+                elif operator in ["<", "Is less than"]: query = query.filter(Customer.order_count < v)
+                elif operator in ["<="]: query = query.filter(Customer.order_count <= v)
             except: pass
             
-        elif field in ["days_since_last_purchase", "days_since_purchase"]:
+        elif field in ["days_since_last_purchase", "days_since_purchase", "Last Active"]:
             try:
                 v = int(value)
                 target_date = datetime.utcnow() - timedelta(days=v)
-                if operator in [">", ">="]: query = query.filter(Customer.last_active <= target_date)
-                elif operator in ["<", "<="]: query = query.filter(Customer.last_active >= target_date)
+                if operator in [">", ">=", "More than X days ago"]: query = query.filter(Customer.last_active <= target_date)
+                elif operator in ["<", "<=", "Less than X days ago"]: query = query.filter(Customer.last_active >= target_date)
             except: pass
 
         elif field == "churn_risk_score":

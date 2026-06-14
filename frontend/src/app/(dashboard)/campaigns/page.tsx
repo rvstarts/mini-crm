@@ -898,15 +898,29 @@ export default function CampaignsPage() {
                   <div className="w-full bg-slate-50 p-4 rounded-xl border border-slate-100 mb-8 text-left">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-sm text-slate-500">Estimated Reach:</span>
-                      <span className="text-sm font-bold text-slate-900">~1,240 users</span>
+                      <span className="text-sm font-bold text-slate-900">
+                        ~{(() => {
+                          const s = segments?.find((seg: any) => seg.name === selectedAudience);
+                          return s ? s.audience_count : 0;
+                        })()} users
+                      </span>
                     </div>
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-sm text-slate-500">Expected CTR:</span>
-                      <span className="text-sm font-bold text-slate-900">12.5%</span>
+                      <span className="text-sm font-bold text-slate-900">
+                        {selectedChannel === 'Email' ? '12.5%' : selectedChannel === 'SMS' ? '18.2%' : '24.5%'}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-500">Estimated Revenue:</span>
-                      <span className="text-sm font-bold text-emerald-600">$3,200</span>
+                      <span className="text-sm font-bold text-emerald-600">
+                        {(() => {
+                          const s = segments?.find((seg: any) => seg.name === selectedAudience);
+                          const count = s ? s.audience_count : 0;
+                          const rate = selectedChannel === 'Email' ? 0.05 : selectedChannel === 'SMS' ? 0.08 : 0.1;
+                          return formatCurrency(count * rate * 150);
+                        })()}
+                      </span>
                     </div>
                   </div>
                 </div>

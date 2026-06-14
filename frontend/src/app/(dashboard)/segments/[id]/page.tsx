@@ -1,6 +1,5 @@
 "use client"
-import { useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import api from "@/lib/api"
 import { Sparkles, ArrowLeft, Users, DollarSign, Target, Calendar, Loader2, Send } from "lucide-react"
@@ -9,7 +8,7 @@ import Link from "next/link"
 
 export default function SegmentDetailsPage() {
   const params = useParams()
-  const router = useRouter()
+
   const segmentId = params.id
 
   const { data: segment, isLoading: isLoadingSeg } = useQuery({

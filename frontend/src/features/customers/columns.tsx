@@ -1,7 +1,7 @@
 "use client"
 import { ColumnDef } from "@tanstack/react-table"
 import Link from "next/link"
-import { MoreHorizontal, Eye, PieChart } from "lucide-react"
+import { MoreHorizontal, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,

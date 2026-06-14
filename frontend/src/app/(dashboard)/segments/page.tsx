@@ -1,6 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import api from "@/lib/api"
 import { Sparkles, Plus, Users, Loader2, TrendingUp, DollarSign, Target, Megaphone, Download, MoreHorizontal, Eye, X, Filter, Trash2, RefreshCcw } from "lucide-react"
@@ -24,7 +23,7 @@ type Segment = {
 }
 
 export default function SegmentsPage() {
-  const router = useRouter()
+
   const queryClient = useQueryClient()
   
   const { data: segments = [], isLoading, refetch } = useQuery<Segment[]>({

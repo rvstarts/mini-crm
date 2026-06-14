@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
-import { Bell, Search, ChevronDown, User as UserIcon, Mail, Users, Sparkles, Loader2 } from "lucide-react";
+import { Bell, Search, User as UserIcon, Mail, Users, Sparkles, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,

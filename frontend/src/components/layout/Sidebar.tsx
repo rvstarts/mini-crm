@@ -12,11 +12,12 @@ import {
   Megaphone,
   Settings,
   Split,
-  LayoutTemplate
+  LayoutTemplate,
+  LucideIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const routes = [
+const routes: Array<{ label: string, icon: LucideIcon, href: string, color: string, badge?: string, notification?: string }> = [
   { label: "Overview", icon: LayoutDashboard, href: "/", color: "text-slate-300" },
   { label: "Customers", icon: Users, href: "/customers", color: "text-slate-300" },
   { label: "Orders", icon: ShoppingBag, href: "/orders", color: "text-slate-300" },

@@ -5,8 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
   ArrowLeft, Type, Image as ImageIcon, MousePointerClick, 
-  Minus, DivideSquare, Tag, ShoppingBag, LayoutTemplate, 
-  Smartphone, Monitor, Tablet, Save, Sparkles, X, RotateCcw, Upload
+  Minus, DivideSquare, Tag, LayoutTemplate, 
+  Smartphone, Monitor, Tablet, Save, Sparkles, X, Upload
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ const ImageBlock = ({ content, readOnly, onChange }: { content: string, readOnly
 
   return (
   <div className="w-full flex justify-center py-4 bg-white relative group">
-    {/* eslint-disable-next-line @next/next/no-img-element */}
+
     <img src={imageUrl} alt="Template image" className="max-w-full h-auto border border-slate-200 shadow-sm" />
     
     {!readOnly && (
@@ -113,7 +113,8 @@ export default function TemplateEditor() {
         { type: "text", content: "<h1 style='text-align:center; font-size: 24px; font-weight: bold; margin-bottom: 10px;'>Your Headline Here</h1><p style='text-align:center; color: #64748b;'>Start building your email template. Hi {{firstName}}!</p>" }
       ]);
     }
-  }, [id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, isNew]);
 
   const fetchTemplate = async () => {
     try {
@@ -130,7 +131,7 @@ export default function TemplateEditor() {
         toast.error("Template not found");
         router.push("/templates");
       }
-    } catch (err) {
+    } catch {
       toast.error("Error loading template");
     } finally {
       setIsLoading(false);
@@ -177,7 +178,7 @@ export default function TemplateEditor() {
           fetchTemplate(); // Refresh versions
         }
       }
-    } catch (err) {
+    } catch {
       toast.error("Failed to save template");
     } finally {
       setIsSaving(false);
@@ -248,7 +249,7 @@ export default function TemplateEditor() {
       } else {
         throw new Error("API failed");
       }
-    } catch (err) {
+    } catch {
       toast.error("Failed to rewrite", { id: toastId });
     } finally {
       setIsRewriting(false);

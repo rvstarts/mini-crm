@@ -1,5 +1,5 @@
 "use client"
-import Link from "next/link"
+
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect } from "react"
 import api from "@/lib/api"
@@ -21,6 +21,7 @@ export default function CustomersPage() {
         .then(() => queryClient.invalidateQueries({ queryKey: ['customers'] }))
         .catch(console.error);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.length, queryClient]);
 
 
@@ -28,7 +29,7 @@ export default function CustomersPage() {
   const highRiskCustomers = data.filter(c => (c.churn_risk_score || 0) > 70);
   const vipCustomers = data.filter(c => c.total_spend > 5000);
   const avgLtv = totalCustomers > 0 ? data.reduce((acc, c) => acc + (c.predicted_ltv || 0), 0) / totalCustomers : 0;
-  const potentialLoss = highRiskCustomers.reduce((acc, c) => acc + (c.predicted_ltv || 0), 0) * 0.5; // Estimated 50% loss if they churn
+
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
 

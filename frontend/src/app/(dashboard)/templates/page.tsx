@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
-  LayoutTemplate, Search, Plus, Sparkles, Filter, 
-  MoreVertical, Copy, Edit3, Trash2, Eye, LayoutGrid, List
+  LayoutTemplate, Search, Plus, Sparkles, 
+  Edit3, Trash2, LayoutGrid, List
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
-function formatDistanceToNow(dateInput: string | Date, options?: any) {
+function formatDistanceToNow(dateInput: string | Date) {
   const date = new Date(dateInput);
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
@@ -67,7 +67,7 @@ export default function TemplatesPage() {
     "Saved Image"
   ];
 
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     try {
       setIsLoading(true);
       // Use cache busting to ensure we never get a stale empty response
@@ -77,17 +77,16 @@ export default function TemplatesPage() {
         const data = await res.json();
         setTemplates(data.templates);
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error("Failed to load templates");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [sortBy]);
 
   useEffect(() => {
     fetchTemplates();
-  }, [sortBy]);
+  }, [fetchTemplates]);
 
   const handleGenerateTemplate = async () => {
     if (!aiPrompt.trim()) return;
@@ -111,7 +110,7 @@ export default function TemplatesPage() {
       } else {
         throw new Error("Failed");
       }
-    } catch (err) {
+    } catch {
       toast.error("Failed to generate template", { id: toastId });
     } finally {
       setIsGenerating(false);
@@ -126,7 +125,7 @@ export default function TemplatesPage() {
         toast.success("Template deleted");
         fetchTemplates();
       }
-    } catch (err) {
+    } catch {
       toast.error("Failed to delete");
     }
   };

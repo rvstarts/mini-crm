@@ -5,8 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { 
   ArrowLeft, Mail, MessageSquare, Phone, MapPin, 
-  ShoppingBag, Activity, Brain, Clock, ChevronRight, 
-  TrendingUp, CreditCard, Sparkles, Send, User, Calendar, X, Smartphone, RefreshCw,
+  ShoppingBag, Activity, 
+  TrendingUp, Sparkles, Send, User, Calendar, X, Smartphone, RefreshCw,
   CheckCircle2, MousePointerClick, Ticket, Edit2, Play, Check, Loader2, Lightbulb, Megaphone, ChevronDown, ChevronUp, Download
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { toast } from "sonner";
 
 export default function CustomerDetailPage() {
@@ -30,7 +30,7 @@ export default function CustomerDetailPage() {
   // AI Copilot State
   const [copilotChannel, setCopilotChannel] = useState<'WhatsApp' | 'SMS' | 'Email'>('WhatsApp');
   const [copilotMessage, setCopilotMessage] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
+
   const [isSending, setIsSending] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [launchedCampaignId, setLaunchedCampaignId] = useState<number | null>(null);
@@ -38,7 +38,7 @@ export default function CustomerDetailPage() {
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
-  const fetchAnalysis = async (channel?: string) => {
+  const fetchAnalysis = async () => {
     setIsAnalysisLoading(true);
     setAnalysisError(null);
     try {
@@ -72,7 +72,7 @@ export default function CustomerDetailPage() {
     queryFn: () => api.get(`/customers/${id}`).then(res => res.data),
   });
 
-  const { data: campaignsData = [], isLoading: isCampaignsLoading } = useQuery({
+  const { data: campaignsData = [] } = useQuery({
     queryKey: ['customer-campaigns', id],
     queryFn: () => api.get(`/campaigns/customer/${id}`).then(res => res.data),
     refetchInterval: 3000,
@@ -130,19 +130,11 @@ export default function CustomerDetailPage() {
     return <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">🟢 Low Risk {score}%</span>;
   };
 
-  const isHighRisk = customer?.churn_risk_score > 70;
+
   
-  // Calculate Campaign KPIs from campaignsData
-  const metrics = campaignsData.reduce((acc: any, c: any) => {
-    acc.received += 1;
-    acc.opened += c.logs.some((l: any) => l.event_type === 'opened') ? 1 : 0;
-    acc.clicked += c.logs.some((l: any) => l.event_type === 'clicked') ? 1 : 0;
-    acc.revenue += c.revenue_generated || 0;
-    return acc;
-  }, { received: 0, opened: 0, clicked: 0, revenue: 0 });
+
   
-  const openRate = metrics.received > 0 ? ((metrics.opened / metrics.received) * 100).toFixed(0) + '%' : '0%';
-  const ctrRate = metrics.opened > 0 ? ((metrics.clicked / metrics.opened) * 100).toFixed(0) + '%' : '0%';
+
 
   const handleEditOpen = () => {
     setEditForm({
@@ -177,7 +169,7 @@ export default function CustomerDetailPage() {
     setCopilotChannel(channel);
     // Ideally we would regenerate specifically for the channel by passing channel to backend
     // For now we just hit fetchAnalysis again if we really want, but let's just mock a short loading state and regenerate
-    fetchAnalysis(channel);
+    fetchAnalysis();
   };
 
   const handleLaunchCampaign = async () => {
@@ -204,7 +196,7 @@ export default function CustomerDetailPage() {
   };
 
   const handleRegenerate = () => {
-    fetchAnalysis(copilotChannel);
+    fetchAnalysis();
   };
 
   let currentStep = 0;
@@ -577,7 +569,7 @@ TOTAL AMOUNT:  ${formatCurrency(order.amount)}
                               <div className="absolute top-4 left-4 right-4 h-0.5 bg-slate-200"></div>
                               
                               <div className="flex justify-between relative z-10">
-                                {['generated', 'sent', 'delivered', 'opened', 'clicked', 'redeemed'].map((step, idx) => {
+                                {['generated', 'sent', 'delivered', 'opened', 'clicked', 'redeemed'].map((step) => {
                                   const logEntry = allLogs.find((l: any) => l.event_type === step);
                                   const isComplete = !!logEntry;
                                   
@@ -661,7 +653,7 @@ TOTAL AMOUNT:  ${formatCurrency(order.amount)}
                       <div className="flex flex-col items-center justify-center py-10 space-y-3 px-4 text-center">
                         <div className="text-sm font-bold text-rose-600">AI Service Unavailable</div>
                         <div className="text-xs text-slate-500 font-mono break-all">Technical Details: {analysisError}</div>
-                        <Button variant="outline" size="sm" onClick={() => fetchAnalysis(copilotChannel)}>Retry</Button>
+                        <Button variant="outline" size="sm" onClick={() => fetchAnalysis()}>Retry</Button>
                       </div>
                     ) : analysisData && !analysisData.error ? (
                       <div className="space-y-3">
@@ -820,7 +812,7 @@ TOTAL AMOUNT:  ${formatCurrency(order.amount)}
                         { step: 3, label: 'Message Opened', icon: Mail, color: 'text-amber-500', bg: 'bg-amber-100' },
                         { step: 4, label: 'Link Clicked', icon: MousePointerClick, color: 'text-purple-500', bg: 'bg-purple-100' },
                         { step: 5, label: 'Offer Redeemed', icon: Ticket, color: 'text-rose-500', bg: 'bg-rose-100' },
-                      ].map((item, idx) => {
+                      ].map((item) => {
                         const isActive = currentStep === item.step;
                         const isPast = currentStep > item.step;
                         const isPending = currentStep < item.step;

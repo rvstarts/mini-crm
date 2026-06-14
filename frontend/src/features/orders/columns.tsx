@@ -1,7 +1,7 @@
 "use client"
 import { ColumnDef } from "@tanstack/react-table"
 import Link from "next/link"
-import { MoreHorizontal, Eye, PieChart, Megaphone, Receipt } from "lucide-react"
+import { MoreHorizontal, Eye, Megaphone, Receipt } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -163,7 +163,7 @@ export const columns: ColumnDef<OrderWithCustomer>[] = [
       if (!dateVal) return <span className="text-slate-500">N/A</span>;
       try {
         return <span className="text-slate-500">{new Date(dateVal as string).toLocaleDateString()}</span>
-      } catch (e) {
+      } catch {
         return <span className="text-slate-500">Invalid Date</span>
       }
     }
