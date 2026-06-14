@@ -3,9 +3,8 @@ import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useAICommandStore } from "@/lib/store/ai-command"
 import api from "@/lib/api"
-import { Sparkles, Send, Bot, User, Command, Zap, ArrowRight, History, Target, AlertTriangle, TrendingUp, Megaphone, Loader2, FireExtinguisher } from "lucide-react"
+import { Sparkles, Send, Bot, User, Command, Zap, History, Target, AlertTriangle, TrendingUp, Megaphone, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 export default function AICommandCenterPage() {
@@ -41,7 +40,7 @@ export default function AICommandCenterPage() {
         ])
       }
     }
-  }, [insights, messages.length])
+  }, [insights, messages.length, setMessages])
 
   const handleSend = async (textOverride?: string) => {
     const textToSend = textOverride || prompt;
@@ -64,7 +63,7 @@ export default function AICommandCenterPage() {
         metrics: aiResponse.metrics,
         actions: aiResponse.actions
       }])
-    } catch (error) {
+    } catch (_error) {
       setMessages(prev => [...prev, { role: 'ai', content: "Sorry, I encountered an error analyzing your request." }])
     }
   }
@@ -311,7 +310,7 @@ export default function AICommandCenterPage() {
               <div className="text-sm text-slate-500 italic">No past chat history.</div>
             ) : (
               <div className="space-y-4">
-                {sessions.map((session, i) => {
+                {sessions.map((session) => {
                   const minutesAgo = Math.floor((Date.now() - session.timestamp) / 60000);
                   const timeText = minutesAgo < 1 ? 'Just now' : minutesAgo < 60 ? `${minutesAgo} min ago` : `${Math.floor(minutesAgo/60)} hr ago`;
                   

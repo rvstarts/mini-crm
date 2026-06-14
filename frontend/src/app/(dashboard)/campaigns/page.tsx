@@ -8,7 +8,7 @@ import { toast } from "sonner"
 import { 
   Plus, Megaphone, MoreVertical, TrendingUp, Sparkles, Send, 
   MousePointerClick, DollarSign, ArrowRight, X, Mail, MessageSquare, 
-  Smartphone, Play, Pause, Copy, BarChart2, Users, Loader2, Trash2, Activity, LayoutTemplate, ChevronDown
+  Smartphone, Play, Pause, BarChart2, Users, Loader2, Trash2, Activity, LayoutTemplate, ChevronDown
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -344,7 +344,6 @@ export default function CampaignsPage() {
   // Wizard Selections
   const [selectedAudience, setSelectedAudience] = useState<string | null>(null)
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null)
-  const [messageVariationIndex, setMessageVariationIndex] = useState(0)
   const [isLaunching, setIsLaunching] = useState(false)
   const [isGeneratingVariation, setIsGeneratingVariation] = useState(false)
   const [selectedTemplateName, setSelectedTemplateName] = useState<string | null>(null)
@@ -422,14 +421,13 @@ export default function CampaignsPage() {
     setWizardStep(1)
     setSelectedAudience(null)
     setSelectedChannel(null)
-    setMessageVariationIndex(0)
   }
 
   const handleUpdateStatus = async (id: number, status: string) => {
     try {
       await api.put(`/campaigns/${id}`, { status });
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-    } catch (error) {
+    } catch (_error) {
       console.error("Failed to update campaign status");
     }
   }
@@ -686,7 +684,7 @@ export default function CampaignsPage() {
                                   try {
                                     await api.delete(`/campaigns/${camp.id}`);
                                     queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-                                  } catch (error) {
+                                  } catch (_error) {
                                     console.error("Failed to delete campaign");
                                     alert("Failed to delete campaign.");
                                   }
@@ -868,7 +866,7 @@ export default function CampaignsPage() {
                                     setSelectedTemplateName(t.name);
                                     setSelectedTemplateId(t.id);
                                     toast.success("Template applied!");
-                                  } catch(err) {
+                                  } catch(_err) {
                                     toast.error("Failed to load template");
                                   }
                                 }}

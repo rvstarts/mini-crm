@@ -2,7 +2,6 @@
 import { useState } from "react"
 import { Users, MessageSquare, Rocket, Sparkles, ArrowRight, ArrowLeft, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import api from "@/lib/api"
 
