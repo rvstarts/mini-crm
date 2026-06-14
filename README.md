@@ -6,7 +6,34 @@ An intelligent, full-stack Customer Relationship Management (CRM) platform desig
 
 ## 🏗️ Architecture Overview
 
+```mermaid
+graph TD
+    User([User / Marketer])
+    
+    subgraph Vercel
+        Frontend[Next.js Frontend\nReact Query + Zustand]
+    end
+    
+    subgraph Render
+        CRM[Core CRM Service\nFlask API]
+        Channel[Channel Simulator\nFlask Worker]
+        DB[(PostgreSQL DB)]
+    end
+    
+    subgraph External APIs
+        Gemini[Google Gemini AI]
+    end
+
+    User -->|Interacts with UI| Frontend
+    Frontend -->|REST API| CRM
+    CRM <-->|SQLAlchemy| DB
+    CRM <-->|Generative AI Analysis| Gemini
+    CRM -->|Triggers Campaign Delivery| Channel
+    Channel -->|Fires Delivery Webhooks| CRM
+```
+
 The project is built on a modern, decoupled microservices architecture, separating the client interface, the core business logic, and third-party delivery simulations into distinct services.
+
 
 ### 1. Frontend Client (Next.js)
 - **Framework:** Next.js 15 (React) with TailwindCSS
@@ -44,6 +71,41 @@ The project is built on a modern, decoupled microservices architecture, separati
 ---
 
 ## 🔄 Full Application Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend as Next.js Frontend
+    participant CRM as Core CRM (Flask)
+    participant Channel as Channel Simulator
+    participant DB as PostgreSQL DB
+
+    User->>Frontend: Creates Segment & Campaign
+    Frontend->>CRM: POST /api/campaigns
+    CRM->>DB: Save Campaign & Get Target Users
+    CRM->>Channel: POST /api/send (for each user)
+    Channel-->>CRM: 202 Accepted
+    CRM-->>Frontend: Campaign Created Successfully
+    
+    loop Background Delivery Simulation
+        Channel->>Channel: Wait 3s
+        Channel->>CRM: POST /api/webhooks/channel-event (Sent)
+        CRM->>DB: Update Metrics
+        Channel->>Channel: Wait 3s
+        Channel->>CRM: POST /api/webhooks/channel-event (Delivered)
+        CRM->>DB: Update Metrics
+        Channel->>Channel: Wait 3s
+        Channel->>CRM: POST /api/webhooks/channel-event (Opened)
+        CRM->>DB: Update Metrics
+    end
+    
+    loop UI Polling (React Query)
+        Frontend->>CRM: GET /api/campaigns
+        CRM->>DB: Fetch Latest Metrics
+        CRM-->>Frontend: Updated Metrics Data
+        Frontend-->>User: Real-time UI Updates
+    end
+```
 
 ### 1. Data Ingestion & Analysis
 - When the CRM boots, customer profiles and historical order data are loaded from the database.
