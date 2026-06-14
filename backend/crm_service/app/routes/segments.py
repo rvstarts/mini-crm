@@ -7,30 +7,36 @@ segments_bp = Blueprint('segments', __name__)
 @segments_bp.route('/', methods=['GET'])
 def get_segments():
     segments = db.session.query(Segment, Journey).outerjoin(Journey, Segment.journey_id == Journey.id).order_by(Segment.created_at.desc()).all()
-    data = [{
-        "id": s.id,
-        "name": s.name,
-        "description": s.description,
-        "audience_count": s.audience_count,
-        "journey_id": s.journey_id,
-        "journey_name": j.name if j else None,
-        "ai_reasoning": s.ai_reasoning,
-        "estimated_recovery": s.estimated_recovery,
-        "recommended_campaign": s.recommended_campaign,
-        "created_at": s.created_at.isoformat() if s.created_at else None,
-    } for s, j in segments]
+    from app.routes.copilot import _build_rules_query
+    data = []
+    for s, j in segments:
+        count = _build_rules_query(s.rules_json or []).count()
+        data.append({
+            "id": s.id,
+            "name": s.name,
+            "description": s.description,
+            "audience_count": count,
+            "journey_id": s.journey_id,
+            "journey_name": j.name if j else None,
+            "ai_reasoning": s.ai_reasoning,
+            "estimated_recovery": s.estimated_recovery,
+            "recommended_campaign": s.recommended_campaign,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+        })
     return jsonify(data)
 
 @segments_bp.route('/<int:id>', methods=['GET'])
 def get_segment(id):
-    result = db.session.query(Segment, Journey).outerjoin(Journey, Segment.journey_id == Journey.id).filter(Segment.id == id).first_or_404()
-    s, j = result
+    s = Segment.query.get_or_404(id)
+    j = Journey.query.get(s.journey_id) if s.journey_id else None
+    from app.routes.copilot import _build_rules_query
+    count = _build_rules_query(s.rules_json or []).count()
     return jsonify({
         "id": s.id,
         "name": s.name,
         "description": s.description,
         "rules_json": s.rules_json,
-        "audience_count": s.audience_count,
+        "audience_count": count,
         "journey_id": s.journey_id,
         "journey_name": j.name if j else None,
         "ai_reasoning": s.ai_reasoning,
@@ -77,9 +83,13 @@ def update_segment(id):
     db.session.commit()
     return jsonify({"id": s.id, "status": "updated"}), 200
 
+from app.models import db, Segment, Journey, Customer, Campaign
+
 @segments_bp.route('/<int:id>', methods=['DELETE'])
 def delete_segment(id):
     s = Segment.query.get_or_404(id)
+    # Clear out foreign keys from Campaigns so we don't hit Postgres IntegrityError
+    Campaign.query.filter_by(segment_id=id).update({"segment_id": None})
     db.session.delete(s)
     db.session.commit()
     return jsonify({"status": "deleted"}), 200
@@ -89,74 +99,8 @@ def get_segment_customers(id):
     s = Segment.query.get_or_404(id)
     rules = s.rules_json or []
     
-    query = Customer.query
-    
-    for rule in rules:
-        field = rule.get("field")
-        operator = rule.get("operator")
-        value = rule.get("value")
-        
-        if field == "city" or field == "City":
-            if operator == "equals" or operator == "Equals":
-                query = query.filter(Customer.city.ilike(f"{value}"))
-            elif operator == "contains" or operator == "Contains":
-                query = query.filter(Customer.city.ilike(f"%{value}%"))
-            elif operator == "Not equals":
-                query = query.filter(Customer.city.ilike(f"{value}") == False)
-                
-        elif field == "total_spend" or field == "Total Spend":
-            try:
-                v = float(value)
-                if operator == "equals" or operator == "Equals": query = query.filter(Customer.total_spend == v)
-                elif operator == ">" or operator == "Is greater than": query = query.filter(Customer.total_spend > v)
-                elif operator == "<" or operator == "Is less than": query = query.filter(Customer.total_spend < v)
-                elif operator == ">=": query = query.filter(Customer.total_spend >= v)
-                elif operator == "<=": query = query.filter(Customer.total_spend <= v)
-            except: pass
-            
-        elif field == "order_count" or field == "Order Count":
-            try:
-                v = int(value)
-                if operator == "equals" or operator == "Equals": query = query.filter(Customer.order_count == v)
-                elif operator == ">" or operator == "Is greater than": query = query.filter(Customer.order_count > v)
-                elif operator == "<" or operator == "Is less than": query = query.filter(Customer.order_count < v)
-                elif operator == ">=": query = query.filter(Customer.order_count >= v)
-                elif operator == "<=": query = query.filter(Customer.order_count <= v)
-            except: pass
-            
-        elif field == "days_since_last_purchase":
-            try:
-                v = int(value)
-                target_date = datetime.utcnow() - timedelta(days=v)
-                if operator == ">" or operator == ">=":
-                    query = query.filter(Customer.last_active <= target_date)
-                elif operator == "<" or operator == "<=":
-                    query = query.filter(Customer.last_active >= target_date)
-            except: pass
-            
-        elif field == "Last Purchase Date":
-            try:
-                target_date = datetime.strptime(value, "%Y-%m-%d")
-                if operator == "Is older than":
-                    query = query.filter(Customer.last_active < target_date)
-                elif operator == "Is newer than":
-                    query = query.filter(Customer.last_active > target_date)
-            except: pass
-            
-        elif field == "churn_risk_score":
-            try:
-                v = int(value)
-                if operator == ">=" or operator == ">" or operator == "Is greater than": query = query.filter(Customer.churn_risk_score >= v)
-                elif operator == "<=" or operator == "<" or operator == "Is less than": query = query.filter(Customer.churn_risk_score <= v)
-                elif operator == "equals" or operator == "Equals" or operator == "==": query = query.filter(Customer.churn_risk_score == v)
-            except: pass
-            
-        elif field == "churn_risk_category":
-            if operator == "equals" or operator == "Equals" or operator == "==":
-                query = query.filter(Customer.churn_risk_category.ilike(f"{value}"))
-            elif operator == "Not equals" or operator == "!=":
-                query = query.filter(Customer.churn_risk_category.ilike(f"{value}") == False)
-
+    from app.routes.copilot import _build_rules_query
+    query = _build_rules_query(rules)
     matched_customers = query.all()
     data = [{
         "id": c.id,

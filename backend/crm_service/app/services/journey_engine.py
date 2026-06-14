@@ -44,8 +44,7 @@ class JourneyEngine:
 
         # Fallback to ensure demo always works
         if not eligible_customers and all_customers:
-            import random
-            eligible_customers = random.sample(all_customers, min(len(all_customers), 12))
+            pass # Removed random fallback per requirements
 
         added_count = 0
         for ec in eligible_customers:
@@ -137,29 +136,7 @@ class JourneyEngine:
                 )
                 db.session.add(log_delivered)
 
-                # Simulated opens (70% chance)
-                import random
-                if random.random() < 0.7:
-                    log_opened = CommunicationLog(
-                        campaign_id=dummy_camp.id,
-                        customer_id=customer.id,
-                        event_type='opened',
-                        timestamp=datetime.utcnow() + timedelta(minutes=5)
-                    )
-                    db.session.add(log_opened)
-                    journey.messages_opened += 1
-                    
-                    # Simulated clicks (30% chance if opened)
-                    if random.random() < 0.3:
-                        log_clicked = CommunicationLog(
-                            campaign_id=dummy_camp.id,
-                            customer_id=customer.id,
-                            event_type='clicked',
-                            timestamp=datetime.utcnow() + timedelta(minutes=10)
-                        )
-                        db.session.add(log_clicked)
-                        journey.messages_clicked += 1
-
+                # Removed simulated opens and clicks per requirements
                 stats["actions_dispatched"] += 1
                 journey.messages_sent += 1
                 journey.messages_delivered += 1
@@ -195,9 +172,7 @@ class JourneyEngine:
                 if 'Purchased?' in condition_label:
                     if customer.order_count > 0: passed = True
                 elif 'Opened?' in condition_label:
-                    # Random logic for demo
-                    import random
-                    if random.random() < 0.6: passed = True
+                    passed = False # Real open tracking required
                 else:
                     passed = True
                 

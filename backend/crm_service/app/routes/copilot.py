@@ -53,10 +53,17 @@ def get_recommendations():
         
     return jsonify(ai_response["recommendation_cards"])
 
-def evaluate_rules_and_get_count(rules):
-    from datetime import datetime, timedelta
+def _build_rules_query(rules):
+    if isinstance(rules, str):
+        import json
+        try:
+            rules = json.loads(rules)
+        except:
+            rules = []
+            
     query = Customer.query
     for rule in rules:
+        if not isinstance(rule, dict): continue
         field = rule.get("field")
         operator = rule.get("operator")
         value = rule.get("value")
@@ -65,13 +72,15 @@ def evaluate_rules_and_get_count(rules):
             if operator in ["equals", "Equals"]: query = query.filter(Customer.city.ilike(f"{value}"))
             elif operator in ["contains", "Contains"]: query = query.filter(Customer.city.ilike(f"%{value}%"))
             elif operator == "Not equals": query = query.filter(Customer.city.ilike(f"{value}") == False)
-        elif field in ["total_spend", "Total Spend"]:
+                
+        elif field in ["total_spend", "Total Spend", "ltv", "LTV"]:
             try:
                 v = float(value)
                 if operator in ["equals", "Equals"]: query = query.filter(Customer.total_spend == v)
                 elif operator in [">", ">=", "Is greater than"]: query = query.filter(Customer.total_spend >= v)
                 elif operator in ["<", "<=", "Is less than"]: query = query.filter(Customer.total_spend <= v)
             except: pass
+            
         elif field in ["order_count", "Order Count"]:
             try:
                 v = int(value)
@@ -79,24 +88,31 @@ def evaluate_rules_and_get_count(rules):
                 elif operator in [">", ">=", "Is greater than"]: query = query.filter(Customer.order_count >= v)
                 elif operator in ["<", "<=", "Is less than"]: query = query.filter(Customer.order_count <= v)
             except: pass
-        elif field == "days_since_last_purchase":
+            
+        elif field in ["days_since_last_purchase", "days_since_purchase"]:
             try:
                 v = int(value)
                 target_date = datetime.utcnow() - timedelta(days=v)
                 if operator in [">", ">="]: query = query.filter(Customer.last_active <= target_date)
                 elif operator in ["<", "<="]: query = query.filter(Customer.last_active >= target_date)
             except: pass
+
         elif field == "churn_risk_score":
             try:
-                v = int(value)
-                if operator in [">=", ">"]: query = query.filter(Customer.churn_risk_score >= v)
-                elif operator in ["<=", "<"]: query = query.filter(Customer.churn_risk_score <= v)
+                v = float(value)
+                v_scaled = v / 100.0 if v > 1.0 else v
+                if operator in [">=", ">"]: query = query.filter(db.or_(Customer.churn_risk_score >= v, Customer.churn_risk_score >= v_scaled))
+                elif operator in ["<=", "<"]: query = query.filter(db.or_(Customer.churn_risk_score <= v, Customer.churn_risk_score <= v_scaled))
             except: pass
+
         elif field == "churn_risk_category":
             if operator in ["equals", "Equals", "=="]: query = query.filter(Customer.churn_risk_category.ilike(f"{value}"))
             elif operator in ["Not equals", "!="]: query = query.filter(Customer.churn_risk_category.ilike(f"{value}") == False)
 
-    return len(query.all())
+    return query
+
+def evaluate_rules_and_get_count(rules):
+    return _build_rules_query(rules).count()
 
 @copilot_bp.route('/chat', methods=['POST'])
 def chat():
@@ -166,27 +182,68 @@ def chat():
             db.session.flush()
 
             # Create the LIVE Campaign
-            # Using same realistic random logic from campaigns.py
-            import random
-            messages_sent = actual_count
-            messages_delivered = int(messages_sent * random.uniform(0.9, 0.99)) if messages_sent > 0 else 0
-            messages_opened = int(messages_delivered * random.uniform(0.2, 0.6)) if messages_delivered > 0 else 0
-            messages_clicked = int(messages_opened * random.uniform(0.1, 0.4)) if messages_opened > 0 else 0
-            revenue_generated = float(messages_clicked * random.randint(10, 50))
-
             new_campaign = Campaign(
                 name=camp_data.get("campaign_name", "AI Campaign"),
                 segment_id=new_seg.id,
                 channel=camp_data.get("recommended_channel", "Email"),
                 message=camp_data.get("message_content", ""),
                 status="active",
-                messages_sent=messages_sent,
-                messages_delivered=messages_delivered,
-                messages_opened=messages_opened,
-                messages_clicked=messages_clicked,
-                revenue_generated=revenue_generated
+                messages_sent=0,
+                messages_delivered=0,
+                messages_opened=0,
+                messages_clicked=0,
+                conversions=0,
+                revenue_generated=0.0
             )
             db.session.add(new_campaign)
+            db.session.flush()
+
+            # Using same realistic random logic from campaigns.py
+            target_customers = _build_rules_query(rules).all()
+            messages_sent = 0
+            messages_delivered = 0
+            messages_opened = 0
+            messages_clicked = 0
+            conversions = 0
+            revenue_generated = 0.0
+            now = datetime.utcnow()
+            
+            import random
+            from datetime import timedelta
+            
+            for cust in target_customers:
+                db.session.add(CommunicationLog(campaign_id=new_campaign.id, customer_id=cust.id, event_type='sent', timestamp=now))
+                messages_sent += 1
+                
+                delay = timedelta(minutes=random.randint(1, 15))
+                if random.random() < 0.88:
+                    db.session.add(CommunicationLog(campaign_id=new_campaign.id, customer_id=cust.id, event_type='delivered', timestamp=now+delay))
+                    messages_delivered += 1
+                    
+                    delay += timedelta(minutes=random.randint(5, 60))
+                    if random.random() < 0.65:
+                        db.session.add(CommunicationLog(campaign_id=new_campaign.id, customer_id=cust.id, event_type='opened', timestamp=now+delay))
+                        messages_opened += 1
+                        
+                        delay += timedelta(minutes=random.randint(2, 30))
+                        if random.random() < 0.29:
+                            db.session.add(CommunicationLog(campaign_id=new_campaign.id, customer_id=cust.id, event_type='clicked', timestamp=now+delay))
+                            messages_clicked += 1
+                            
+                            delay += timedelta(minutes=random.randint(10, 120))
+                            if random.random() < 0.80:
+                                db.session.add(CommunicationLog(campaign_id=new_campaign.id, customer_id=cust.id, event_type='converted', timestamp=now+delay))
+                                conversions += 1
+                                rev = random.choice([49.99, 99.99, 149.99, 299.99])
+                                revenue_generated += rev
+            
+            new_campaign.messages_sent = messages_sent
+            new_campaign.messages_delivered = messages_delivered
+            new_campaign.messages_opened = messages_opened
+            new_campaign.messages_clicked = messages_clicked
+            new_campaign.conversions = conversions
+            new_campaign.revenue_generated = revenue_generated
+            
             db.session.commit()
             
             # Sync AI metrics with reality
@@ -291,51 +348,9 @@ def generate_segment():
             
         for segment in segments:
             rules = segment.get("rules", [])
-            
-            # Start base query
-            query = Customer.query
-            
-            for rule in rules:
-                field = rule.get("field")
-                operator = rule.get("operator")
-                value = rule.get("value")
-                
-                if field == "city":
-                    if operator == "equals":
-                        query = query.filter(Customer.city.ilike(f"{value}"))
-                    elif operator == "contains":
-                        query = query.filter(Customer.city.ilike(f"%{value}%"))
-                elif field == "total_spend":
-                    try:
-                        v = float(value)
-                        if operator == "equals": query = query.filter(Customer.total_spend == v)
-                        elif operator == ">": query = query.filter(Customer.total_spend > v)
-                        elif operator == "<": query = query.filter(Customer.total_spend < v)
-                        elif operator == ">=": query = query.filter(Customer.total_spend >= v)
-                        elif operator == "<=": query = query.filter(Customer.total_spend <= v)
-                    except: pass
-                elif field == "order_count":
-                    try:
-                        v = int(value)
-                        if operator == "equals": query = query.filter(Customer.order_count == v)
-                        elif operator == ">": query = query.filter(Customer.order_count > v)
-                        elif operator == "<": query = query.filter(Customer.order_count < v)
-                        elif operator == ">=": query = query.filter(Customer.order_count >= v)
-                        elif operator == "<=": query = query.filter(Customer.order_count <= v)
-                    except: pass
-                elif field == "days_since_last_purchase":
-                    # This is tricky because we have last_active date
-                    # days_since_last_purchase > X means last_active < (now - X days)
-                    try:
-                        v = int(value)
-                        target_date = datetime.utcnow() - timedelta(days=v)
-                        if operator == ">" or operator == ">=":
-                            query = query.filter(Customer.last_active <= target_date)
-                        elif operator == "<" or operator == "<=":
-                            query = query.filter(Customer.last_active >= target_date)
-                    except: pass
-                    
+            query = _build_rules_query(rules)
             matched_customers = query.all()
+            
             segment["estimated_customer_count"] = len(matched_customers)
             
             # Calculate estimated recovery (mocked as total_spend * 0.1 for now, or avg_order_value)
@@ -351,35 +366,7 @@ def generate_segment():
 @copilot_bp.route('/campaign-opportunity', methods=['GET'])
 def get_campaign_opportunity():
     try:
-        pending_opp = AICampaignOpportunity.query.filter_by(status='pending').order_by(AICampaignOpportunity.created_at.desc()).first()
-        
         customers = Customer.query.all()
-        
-        if pending_opp:
-            # Re-evaluate rules to find matching customers
-            matched_customers = _evaluate_rules(customers, pending_opp.rules_json)
-            return jsonify({
-                "id": pending_opp.id,
-                "campaign_name": pending_opp.campaign_name,
-                "objective": pending_opp.objective,
-                "target_audience": pending_opp.target_audience,
-                "target_audience_size": len(matched_customers),
-                "recommended_channel": pending_opp.recommended_channel,
-                "subject_line": pending_opp.subject_line,
-                "message_content": pending_opp.message_content,
-                "expected_revenue": pending_opp.expected_revenue,
-                "confidence": pending_opp.confidence,
-                "rules": pending_opp.rules_json,
-                "customers": [
-                    {
-                        "id": c.id,
-                        "name": c.name,
-                        "churn_risk_score": c.churn_risk_score,
-                        "total_spend": c.total_spend,
-                        "reason": _generate_reason(c, pending_opp.rules_json)
-                    } for c in matched_customers
-                ]
-            })
 
         # Calculate some basic segments to feed to the AI
         high_risk_count = sum(1 for c in customers if c.churn_risk_score and c.churn_risk_score >= 70)
@@ -404,11 +391,11 @@ def get_campaign_opportunity():
             return jsonify({"error": "AI insights temporarily unavailable."}), 503
             
         new_opp = AICampaignOpportunity(
-            campaign_name=ai_response.get("campaign_name", "New Campaign"),
-            objective=ai_response.get("objective", ""),
-            target_audience=ai_response.get("target_audience", ""),
-            recommended_channel=ai_response.get("recommended_channel", "Email"),
-            subject_line=ai_response.get("subject_line", ""),
+            campaign_name=str(ai_response.get("campaign_name", "New Campaign"))[:255],
+            objective=str(ai_response.get("objective", ""))[:255],
+            target_audience=str(ai_response.get("target_audience", ""))[:255],
+            recommended_channel=str(ai_response.get("recommended_channel", "Email"))[:50],
+            subject_line=str(ai_response.get("subject_line", ""))[:255],
             message_content=ai_response.get("message_content", ""),
             expected_revenue=ai_response.get("expected_revenue", 0.0),
             confidence=ai_response.get("confidence", 0.9),
@@ -418,7 +405,16 @@ def get_campaign_opportunity():
         db.session.add(new_opp)
         db.session.commit()
         
-        matched_customers = _evaluate_rules(customers, new_opp.rules_json)
+        matched_customers = _build_rules_query(new_opp.rules_json).all()
+        
+        # Fallback if AI hallucinates an invalid segment (0 customers or ALL customers)
+        total_customers_in_db = Customer.query.count()
+        if len(matched_customers) == 0 or len(matched_customers) == total_customers_in_db:
+            new_opp.rules_json = [{"field": "churn_risk_score", "operator": ">=", "value": 50}]
+            db.session.commit()
+            matched_customers = _build_rules_query(new_opp.rules_json).all()
+            if len(matched_customers) == 0:
+                matched_customers = Customer.query.limit(10).all()
         
         return jsonify({
             "id": new_opp.id,
@@ -457,38 +453,7 @@ def consume_campaign_opportunity(id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-def _evaluate_rules(customers, rules):
-    if not rules:
-        return customers
-    matched = []
-    for c in customers:
-        matches_all = True
-        for rule in rules:
-            field = rule.get('field')
-            operator = rule.get('operator')
-            value = rule.get('value')
-            
-            c_val = getattr(c, field, None)
-            
-            # Special logic for days_since_active
-            if field == 'days_since_active' and c.last_active:
-                c_val = (datetime.utcnow() - c.last_active).days
-            elif field == 'days_since_active':
-                c_val = 0
-                
-            if c_val is None:
-                matches_all = False
-                break
-                
-            if operator == '>=' and not (c_val >= value): matches_all = False
-            elif operator == '<=' and not (c_val <= value): matches_all = False
-            elif operator == '==' and not (c_val == value): matches_all = False
-            elif operator == '>' and not (c_val > value): matches_all = False
-            elif operator == '<' and not (c_val < value): matches_all = False
-            
-        if matches_all:
-            matched.append(c)
-    return matched
+
 
 def _generate_reason(customer, rules):
     reasons = []
@@ -504,66 +469,96 @@ def _generate_reason(customer, rules):
 @copilot_bp.route('/opportunities', methods=['GET'])
 def get_opportunities():
     try:
-        # Check for existing pending opportunity
-        pending_opp = AIOpportunity.query.filter_by(status='pending').order_by(AIOpportunity.created_at.desc()).first()
-        if pending_opp:
-            return jsonify({
-                "id": pending_opp.id,
-                "segmentName": pending_opp.segment_name,
-                "reason": pending_opp.reason,
-                "rules": pending_opp.rules_json,
-                "estimatedAudience": pending_opp.estimated_audience,
-                "estimatedRecovery": pending_opp.estimated_recovery,
-                "confidence": pending_opp.confidence,
-                "status": pending_opp.status
-            })
-
-        # Build aggregate customer data
+        # Build comprehensive aggregate customer data
         customers = Customer.query.all()
-        high_risk_customers = [c for c in customers if c.churn_risk_category == 'High']
-        medium_risk_customers = [c for c in customers if c.churn_risk_category == 'Medium']
+        orders = Order.query.all()
+        campaigns = Campaign.query.all()
         
-        # Exclude both created segments and previously consumed/dismissed opportunities
-        existing_segments = Segment.query.all()
-        existing_segment_names = [s.name for s in existing_segments]
-        
-        past_opps = AIOpportunity.query.all()
-        past_opp_names = [o.segment_name for o in past_opps]
-        
-        all_excluded_names = list(set(existing_segment_names + past_opp_names))
+        # Inactivity & recent purchases
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        inactive_customers = [c for c in customers if c.last_active and c.last_active < thirty_days_ago]
+        first_time_customers = [c for c in customers if c.order_count == 1]
         
         data_summary = {
             "total_customers": len(customers),
-            "high_risk_customers": {
-                "count": len(high_risk_customers),
-                "potential_recovery_revenue": sum((c.avg_order_value or 0) for c in high_risk_customers)
-            },
-            "medium_risk_customers": {
-                "count": len(medium_risk_customers),
-                "potential_recovery_revenue": sum((c.avg_order_value or 0) for c in medium_risk_customers)
-            },
-            "existing_segments": all_excluded_names
+            "high_risk_customers": len([c for c in customers if c.churn_risk_category == 'High']),
+            "total_revenue": sum(o.amount for o in orders if o.status == 'completed' and o.amount),
+            "inactive_customers_30_days": len(inactive_customers),
+            "first_time_customers": len(first_time_customers),
+            "campaign_performance": {
+                "total_campaigns": len(campaigns),
+                "total_messages_sent": sum((c.messages_sent or 0) for c in campaigns),
+                "total_campaign_revenue": sum((c.revenue_generated or 0) for c in campaigns)
+            }
         }
         
         ai_response = ai_service.analyze_opportunities(data_summary)
         
-        # Save new opportunity to database
+        # 1. Parse the rules
+        rules = ai_response.get("generatedRules", [])
+        if isinstance(rules, str):
+            import json
+            try:
+                rules = json.loads(rules)
+            except:
+                rules = []
+        
+        # 2. Deterministically fetch matching customers
+        query = _build_rules_query(rules)
+        matching_customers = query.all()
+        
+        # 3. Fallback if AI hallucinates an invalid segment (0 customers or ALL customers)
+        total_customers_in_db = Customer.query.count()
+        if len(matching_customers) == 0 or len(matching_customers) == total_customers_in_db:
+            rules = [{"field": "churn_risk_category", "operator": "equals", "value": "High"}]
+            query = _build_rules_query(rules)
+            matching_customers = query.all()
+            if len(matching_customers) == 0:
+                # Absolute fallback if no high risk customers exist
+                matching_customers = Customer.query.limit(10).all()
+        
+        customer_count = len(matching_customers)
+        
+        # 4. Calculate Potential Recovery (e.g. LTV * ChurnRisk / 100)
+        potential_recovery = sum(
+            ((c.total_spend or 0) * ((c.churn_risk_score or 0) / 100.0)) 
+            for c in matching_customers
+        )
+        
+        # 5. Calculate dynamic Confidence score based on data quality
+        # Base 70, +10 if size is reasonable, + up to 15 based on average churn risk
+        base_confidence = 70.0
+        size_bonus = 10.0 if 5 <= customer_count <= 50 else 5.0
+        avg_churn = sum((c.churn_risk_score or 0) for c in matching_customers) / max(customer_count, 1)
+        churn_bonus = min(15.0, avg_churn / 100.0 * 15.0)
+        confidence = round(base_confidence + size_bonus + churn_bonus, 1)
+        
+        # Map AI Response to the DB Model deterministically
         new_opp = AIOpportunity(
-            segment_name=ai_response.get("segmentName", "New Segment"),
-            reason=ai_response.get("reason", ""),
-            rules_json=ai_response.get("rules", []),
-            estimated_audience=ai_response.get("estimatedAudience", 0),
-            estimated_recovery=ai_response.get("estimatedRecovery", 0.0),
-            confidence=ai_response.get("confidence", 0.0),
+            title=str(ai_response.get("title", "AI Generated Opportunity"))[:255],
+            segment_name=str(ai_response.get("recommendedSegmentName", "New AI Segment"))[:255],
+            reason=ai_response.get("reasoning", ""),
+            rules_json=rules,
+            estimated_audience=customer_count,
+            estimated_recovery=potential_recovery,
+            confidence=confidence,
             status='pending'
         )
         db.session.add(new_opp)
         db.session.commit()
         
-        ai_response["id"] = new_opp.id
-        ai_response["status"] = new_opp.status
-        
-        return jsonify(ai_response)
+        return jsonify({
+            "id": new_opp.id,
+            "title": new_opp.title,
+            "recommendedSegmentName": new_opp.segment_name,
+            "reasoning": new_opp.reason,
+            "generatedRules": new_opp.rules_json,
+            "customerCount": new_opp.estimated_audience,
+            "potentialRecovery": new_opp.estimated_recovery,
+            "confidence": new_opp.confidence,
+            "status": new_opp.status,
+            "created_at": new_opp.created_at.isoformat()
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -587,7 +582,7 @@ def generate_journey():
         return jsonify({"error": "AI insights temporarily unavailable."}), 503
         
     rules = ai_response.get("rules", [])
-    matched_customers = _evaluate_rules(customers, rules)
+    matched_customers = _build_rules_query(rules).all()
     
     customers_data = [{
         "id": c.id,
@@ -606,60 +601,22 @@ def generate_journey():
     
     return jsonify(ai_response)
 
+
+
 @copilot_bp.route('/preview-segment', methods=['POST'])
 def preview_segment():
     try:
         data = request.json
         rules = data.get('rules', [])
         
-        query = Customer.query
-        for rule in rules:
-            field = rule.get("field")
-            operator = rule.get("operator")
-            value = rule.get("value")
-            
-            if field == "city" or field == "City":
-                if operator == "equals" or operator == "Equals":
-                    query = query.filter(Customer.city.ilike(f"{value}"))
-                elif operator == "contains" or operator == "Contains":
-                    query = query.filter(Customer.city.ilike(f"%{value}%"))
-                elif operator == "Not equals":
-                    query = query.filter(Customer.city.ilike(f"{value}") == False)
-                    
-            elif field == "total_spend" or field == "Total Spend":
-                try:
-                    v = float(value)
-                    if operator == "equals" or operator == "Equals": query = query.filter(Customer.total_spend == v)
-                    elif operator == ">" or operator == "Is greater than": query = query.filter(Customer.total_spend > v)
-                    elif operator == "<" or operator == "Is less than": query = query.filter(Customer.total_spend < v)
-                    elif operator == ">=": query = query.filter(Customer.total_spend >= v)
-                    elif operator == "<=": query = query.filter(Customer.total_spend <= v)
-                except: pass
-                
-            elif field == "order_count" or field == "Order Count":
-                try:
-                    v = int(value)
-                    if operator == "equals" or operator == "Equals": query = query.filter(Customer.order_count == v)
-                    elif operator == ">" or operator == "Is greater than": query = query.filter(Customer.order_count > v)
-                    elif operator == "<" or operator == "Is less than": query = query.filter(Customer.order_count < v)
-                    elif operator == ">=": query = query.filter(Customer.order_count >= v)
-                    elif operator == "<=": query = query.filter(Customer.order_count <= v)
-                except: pass
-                
-            elif field == "days_since_last_purchase":
-                try:
-                    v = int(value)
-                    target_date = datetime.utcnow() - timedelta(days=v)
-                    if operator == ">" or operator == ">=":
-                        query = query.filter(Customer.last_active <= target_date)
-                    elif operator == "<" or operator == "<=":
-                        query = query.filter(Customer.last_active >= target_date)
-                except: pass
-
-            elif field == "churn_risk_category":
-                if operator == "equals" or operator == "Equals":
-                    query = query.filter(Customer.churn_risk_category.ilike(f"{value}"))
-
+        if isinstance(rules, str):
+            import json
+            try:
+                rules = json.loads(rules)
+            except:
+                rules = []
+        
+        query = _build_rules_query(rules)
         matched_customers = query.all()
         data = [{
             "id": c.id,

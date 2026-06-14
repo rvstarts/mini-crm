@@ -46,9 +46,9 @@ def get_dashboard_metrics():
         next_day = day + timedelta(days=1)
         day_rev = db.session.query(func.sum(Order.amount)).filter(Order.created_at >= day, Order.created_at < next_day).scalar() or 0
         sparklines["revenue"].append(round(day_rev, 2))
-        sparklines["roi"].append(round(marketing_roi * (0.9 + (i%3)*0.1), 1)) # slight variation
-        sparklines["ltv"].append(round(avg_ltv * (0.95 + (i%2)*0.05), 0))
-        sparklines["churn"].append(round(churn_revenue * (0.98 + (i%4)*0.02), 0))
+        sparklines["roi"].append(round(marketing_roi, 1))
+        sparklines["ltv"].append(round(avg_ltv, 0))
+        sparklines["churn"].append(round(churn_revenue, 0))
 
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     yesterday_start = today_start - timedelta(days=1)
@@ -238,8 +238,7 @@ def get_activity_feed():
             
         desc = f"+1 user ({cust.name})" if cust else "+1 interaction"
         if log.event_type == 'purchased' and cust:
-            # mock revenue for the feed
-            desc = f"₹{round(cust.avg_order_value, 0)}"
+            desc = "Customer Purchased"
             
         feed.append({
             "id": log.id,
@@ -265,28 +264,28 @@ def get_customer_insights():
     
     return jsonify({
         "most_valuable": {
-            "name": top_seg.name if top_seg else "VIP",
-            "revenue": round(top_seg.rev, 2) if top_seg else 39161
+            "name": top_seg.name if top_seg else "N/A",
+            "revenue": round(top_seg.rev, 2) if top_seg and top_seg.rev else 0
         },
         "fastest_growing": {
-            "name": fast_seg.name if fast_seg else "Recent Buyers",
-            "growth": 23
+            "name": fast_seg.name if fast_seg else "N/A",
+            "growth": 0
         },
         "highest_churn": {
-            "name": churn_seg.name if churn_seg else "Dormant Users",
-            "potential_loss": 128000
+            "name": churn_seg.name if churn_seg else "N/A",
+            "potential_loss": 0
         }
     })
 
 @analytics_bp.route('/executive-dashboard', methods=['GET'])
 def get_executive_dashboard():
     return jsonify({
-        "overall_score": 82,
+        "overall_score": 0,
         "metrics": {
-            "Revenue": 88,
-            "CTR": 85,
-            "Retention": 92,
-            "Churn": 63
+            "Revenue": 0,
+            "CTR": 0,
+            "Retention": 0,
+            "Churn": 0
         }
     })
 

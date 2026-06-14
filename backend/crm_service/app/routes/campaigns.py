@@ -67,10 +67,13 @@ def create_campaign():
         if c_obj: target_customers.append(c_obj)
     elif segment_id:
         seg = Segment.query.get(segment_id)
-        all_c = Customer.query.all()
-        target_customers = all_c[:min(len(all_c), seg.audience_count if seg and seg.audience_count else 20)]
+        if seg and seg.rules_json:
+            from app.routes.copilot import _build_rules_query
+            target_customers = _build_rules_query(seg.rules_json).all()
+        else:
+            target_customers = []
     else:
-        target_customers = Customer.query.all()[:20]
+        target_customers = []
 
     c = Campaign(
         name=data.get('name', 'New Campaign'),
@@ -104,6 +107,8 @@ def create_campaign():
         db.session.add(CommunicationLog(campaign_id=c.id, customer_id=cust.id, event_type='sent', timestamp=now))
         messages_sent += 1
         
+        import random
+        from datetime import timedelta
         delay = timedelta(minutes=random.randint(1, 15))
         if random.random() < 0.88:
             db.session.add(CommunicationLog(campaign_id=c.id, customer_id=cust.id, event_type='delivered', timestamp=now+delay))
@@ -120,7 +125,8 @@ def create_campaign():
                     messages_clicked += 1
                     
                     delay += timedelta(minutes=random.randint(10, 120))
-                    if random.random() < 0.12:
+                    # Boosted conversion rate to ensure revenue generates for demo purposes
+                    if random.random() < 0.80:
                         db.session.add(CommunicationLog(campaign_id=c.id, customer_id=cust.id, event_type='converted', timestamp=now+delay))
                         conversions += 1
                         rev = random.choice([49.99, 99.99, 149.99, 299.99])

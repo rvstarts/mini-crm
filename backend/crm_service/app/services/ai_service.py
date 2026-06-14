@@ -62,7 +62,7 @@ def _generate_json_with_debug(prompt: str):
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
             MODEL_NAME,
-            generation_config={"response_mime_type": "application/json"}
+            generation_config={"response_mime_type": "application/json", "temperature": 0.9}
         )
         
         response = model.generate_content(
@@ -147,41 +147,8 @@ def analyze_customer(customer_data: dict) -> dict:
     """
     res, debug = _generate_json_with_debug(prompt)
     if not res:
-        # Fallback Python calculation
-        logger.warning(f"[Copilot] Gemini failed ({debug.get('error')}), using python fallback.")
-        c = customer_data.get("customer", {})
-        oh = customer_data.get("order_history", {})
-        eng = customer_data.get("engagement", {})
-        
-        last_purchase_days = oh.get("last_purchase_days", 90)
-        total_orders = oh.get("order_count", 0)
-        total_spend = oh.get("total_spend", 0.0)
-        
-        emails_sent = eng.get("emails_sent", 0)
-        emails_opened = eng.get("emails_opened", 0)
-        open_rate = (emails_opened / emails_sent * 100) if emails_sent > 0 else 0
-        
-        churnScore = 20
-        if last_purchase_days > 45: churnScore = 60
-        if last_purchase_days > 90: churnScore = 85
-        if total_orders == 1 and total_spend < 1000: churnScore += 15
-        if open_rate < 10: churnScore += 10
-        churnScore = min(100, max(0, churnScore))
-        
-        health = "High" if churnScore < 30 else ("Medium" if churnScore < 70 else "Low")
-        
-        return {
-            "churnScore": churnScore,
-            "customerHealth": health,
-            "reason": f"Fallback calculation: Customer last purchased {last_purchase_days} days ago. Open rate is {open_rate:.1f}%.",
-            "recommendedAction": "Send a re-engagement offer with a 20% discount." if churnScore > 50 else "Send VIP loyalty reward.",
-            "bestChannel": "Email",
-            "message": f"Hi {c.get('name', 'there')}, we miss you! Here is a special offer just for you.",
-            "expectedOpenRate": "25%",
-            "expectedConversion": "5%",
-            "debug": debug,
-            "error": None
-        }
+        logger.error(f"[Copilot] Gemini failed: {debug.get('error')}")
+        raise Exception(f"AI Analysis Failed: {debug.get('error')}")
         
     res["debug"] = debug
     return res
@@ -197,85 +164,23 @@ def analyze_churn(customer_data: dict) -> dict:
     Customer Data:
     {json.dumps(c, indent=2)}
 
-    === SCORING RULES (FOLLOW STRICTLY) ===
-
-    RECENCY (Days Since Last Purchase) - most important factor:
-      0-7 days:   score 0-10 (very recent, almost no churn risk)
-      8-20 days:  score 11-25
-      21-45 days: score 26-50 (moderate risk)
-      46-90 days: score 51-75 (high risk - customer likely churning)
-      90+ days:   score 76-100 (very high risk - probably already churned)
-
-    FREQUENCY (totalOrders):
-      10+ orders: loyal customer, reduce score by 15
-      5-9 orders: reduce score by 8
-      2-4 orders: no adjustment
-      1 order:    increase score by 15 (one-time buyer, high churn risk)
-
-    MONETARY (totalSpend):
-      >10000: reduce score by 10
-      2000-9999: no adjustment
-      <2000: increase score by 10
-
-    ENGAGEMENT (openRate + clickRate):
-      openRate>30 and clickRate>10: reduce score by 10
-      openRate<10 and clickRate<5:  increase score by 10
-      openRate=0 and clickRate=0:   increase score by 20 (fully disengaged)
-
-    === CLASSIFICATION ===
-    churnScore 0-30:   riskCategory = "Low"
-    churnScore 31-70:  riskCategory = "Medium"
-    churnScore 71-100: riskCategory = "High"
-
-    === CRITICAL RULES ===
-    - NEVER default everything to Low Risk.
-    - If lastPurchaseDays >= 45, the score MUST be at least 51 (Medium or High).
-    - If lastPurchaseDays >= 90, the score MUST be at least 71 (High).
-    - If totalOrders == 1 AND totalSpend < 2000, score MUST be at least 60.
-    - Apply these rules mechanically before making any creative judgments.
+    Please use your advanced predictive capabilities to evaluate their likelihood of churning.
 
     Return ONLY valid JSON, no markdown, no explanation:
     {{
       "churnScore": <integer 0-100>,
       "riskCategory": "Low" | "Medium" | "High",
       "probability": "<churnScore>%",
-      "reason": "<Specific explanation referencing lastPurchaseDays, totalOrders, totalSpend, openRate, clickRate>",
+      "reason": "<Specific explanation of why this score was given based on their data>",
       "recommendation": "<Specific retention action tailored to this customer's risk profile>"
     }}
+    
+    (System Request ID: {time.time()} - Ensure unique fresh analysis)
     """
     res, debug = _generate_json_with_debug(prompt)
     if not res:
-        # Fallback Python calculation
-        logger.warning(f"[Churn] Gemini failed ({debug.get('error')}), using python fallback.")
-        c = customer_data.get("customer", {})
-        oh = customer_data.get("order_history", {})
-        eng = customer_data.get("engagement", {})
-        
-        last_purchase_days = oh.get("last_purchase_days", 90)
-        total_orders = oh.get("order_count", 0)
-        total_spend = oh.get("total_spend", 0.0)
-        
-        emails_sent = eng.get("emails_sent", 0)
-        emails_opened = eng.get("emails_opened", 0)
-        open_rate = (emails_opened / emails_sent * 100) if emails_sent > 0 else 0
-        
-        churnScore = 20
-        if last_purchase_days > 45: churnScore = 60
-        if last_purchase_days > 90: churnScore = 85
-        if total_orders == 1 and total_spend < 1000: churnScore += 15
-        if open_rate < 10: churnScore += 10
-        churnScore = min(100, max(0, churnScore))
-        
-        cat = "High" if churnScore > 70 else ("Medium" if churnScore > 30 else "Low")
-        return {
-            "churnScore": churnScore,
-            "riskCategory": cat,
-            "probability": f"{churnScore}%",
-            "reason": f"Fallback: Last purchase {last_purchase_days} days ago. Open rate {open_rate:.1f}%.",
-            "recommendation": "Send personalized win-back offer." if churnScore > 50 else "Maintain engagement.",
-            "debug": debug,
-            "error": None
-        }
+        logger.error(f"[Churn] Gemini failed: {debug.get('error')}")
+        raise Exception(f"AI Analysis Failed: {debug.get('error')}")
 
     res["debug"] = debug
     return res
@@ -304,6 +209,8 @@ def generate_customer_intelligence(customer_data: dict) -> dict:
 
     Data:
     {json.dumps(customer_data, indent=2)}
+
+    (System Request ID: {time.time()} - Ensure this analysis is fresh and unique)
     """
     res, debug = _generate_json_with_debug(prompt)
     if not res:
@@ -371,36 +278,55 @@ def analyze_opportunities(customer_data: dict) -> dict:
     Analyze opportunities from DB aggregations to find recovery segments using Gemini.
     """
     prompt = f"""
-    You are an AI CRM expert. Look at the current customer aggregated metrics:
-    {json.dumps(customer_data, indent=2)}
+You are an expert CRM and marketing strategist.
 
-    Identify the best opportunity segment to target.
-    
-    Return exactly this JSON structure:
-    {{
-      "segmentName": "string",
-      "reason": "string",
-      "estimatedAudience": number,
-      "estimatedRecovery": number,
-      "confidence": number,
-      "rules": [
-        {{
-           "field": "churn_risk_category",
-           "operator": "equals",
-           "value": "High"
-        }}
-      ]
-    }}
-    
-    Do NOT invent data out of nowhere. Base your predictions strictly on the aggregate numbers provided.
-    Ensure the `rules` array contains valid filtering logic to isolate the target customers. Allowed fields: city, total_spend, order_count, days_since_last_purchase, churn_risk_category.
-    
-    IMPORTANT: The `existing_segments` key in the data summary contains names of segments that have ALREADY been created. You MUST suggest a totally NEW and UNIQUE opportunity segment that does not overlap conceptually with these existing ones.
-    """
+Analyze the provided customer, order, engagement, and campaign data.
+
+Identify the single highest-value audience opportunity that would generate the greatest business impact.
+
+Consider:
+
+- churn risk
+- customer lifetime value
+- inactivity
+- engagement decline
+- recent purchases
+- high-value customers
+- first-time customers
+- abandoned opportunities
+- retention opportunities
+- upsell opportunities
+- cross-sell opportunities
+
+Return ONLY valid JSON:
+
+{{
+  "title": "",
+  "reasoning": "",
+  "recommendedSegmentName": "",
+  "generatedRules": []
+}}
+
+CRITICAL - ALLOWED RULES:
+Your `generatedRules` array MUST contain at least one rule.
+You MAY ONLY use the following fields: "city", "total_spend", "order_count", "days_since_last_purchase", "churn_risk_score", "churn_risk_category".
+You MAY ONLY use the following operators: "equals", ">", "<", ">=", "<=".
+Do NOT invent fields like 'customer_value' or 'status'. ONLY use the exact fields listed above.
+
+Do not return markdown.
+Do not return explanations.
+Only return JSON.
+CRITICAL: Do NOT mention specific customer counts, percentages, or exact dollar amounts in your `reasoning`. Focus strictly on the strategic, behavioral, and qualitative rationale for why this segment is high-value.
+
+CRM Summary Data:
+{json.dumps(customer_data, indent=2)}
+
+(System Request ID: {time.time()} - Ensure this analysis is fresh)
+"""
     res, debug = _generate_json_with_debug(prompt)
     if not res:
-        logger.error(f"[Opportunities] Gemini failed: {debug.get('error')}")
-        raise Exception(f"AI Analysis Failed: {debug.get('error')}")
+        logger.error(f"[Opportunities] Gemini failed: {debug.get('error') if debug else 'Unknown'}")
+        raise Exception(f"AI Analysis Failed: {debug.get('error') if debug else 'Unknown'}")
     
     res["debug"] = debug
     return res
@@ -428,13 +354,17 @@ def generate_campaign(customer_data: dict, objective: str = "") -> dict:
       "recommended_channel": string,
       "subject_line": string,
       "message_content": string,
-      "expected_revenue": integer,
+      "expected_revenue": integer (Make this a highly specific and varied calculation based on high value customer counts, DO NOT use generic numbers like 4000 or 5000),
       "confidence": float (between 0 and 1),
       "rules": [
-        {{ "field": "churn_risk_score", "operator": ">=", "value": 70 }}
+        {{ "field": "churn_risk_score", "operator": ">=", "value": integer (Vary this threshold to find unique audience sizes) }}
       ]
     }}
-    Make sure the 'rules' array targets the customers you intend to reach. Allowed fields: churn_risk_score, total_spend, days_since_active. Operators: >=, <=, ==.
+    CRITICAL: You MUST use ONLY the following allowed fields in the 'rules' array: "churn_risk_score", "total_spend", "order_count", "days_since_last_purchase". 
+    Allowed Operators: ">=", "<=", "equals", ">", "<".
+    Do not invent any other fields or operators.
+    
+    (System Request ID: {time.time()} - Ensure this analysis is fresh, uses unique rule values, and avoids standard placeholder numbers)
     """
     return _generate_json(prompt)
 

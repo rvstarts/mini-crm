@@ -156,6 +156,7 @@ class JourneyState(db.Model):
 class AIOpportunity(db.Model):
     __tablename__ = 'ai_opportunities'
     id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=True)
     segment_name = db.Column(db.String(255), nullable=False)
     reason = db.Column(db.Text)
     rules_json = db.Column(db.JSON, nullable=False)
