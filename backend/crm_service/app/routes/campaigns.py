@@ -143,7 +143,9 @@ def create_campaign():
     
     import requests
     try:
-        requests.post('http://localhost:5001/api/send', json={"campaign_id": c.id, "channel": c.channel}, timeout=1)
+        import os
+        channel_url = os.environ.get('CHANNEL_SERVICE_URL', 'http://localhost:5001').rstrip('/')
+        requests.post(f'{channel_url}/api/send', json={"campaign_id": c.id, "channel": c.channel}, timeout=1)
     except: pass
         
     return jsonify({"id": c.id, "status": "created"}), 201

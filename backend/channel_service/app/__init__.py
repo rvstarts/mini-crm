@@ -29,7 +29,9 @@ def create_app():
             # Simple retry loop
             for _ in range(3):
                 try:
-                    res = requests.post('http://localhost:5000/api/webhooks/channel-event', json=payload, timeout=5)
+                    import os
+                    crm_url = os.environ.get('CRM_SERVICE_URL', 'http://localhost:5000').rstrip('/')
+                    res = requests.post(f'{crm_url}/api/webhooks/channel-event', json=payload, timeout=5)
                     if res.status_code == 200:
                         break
                 except Exception as e:
