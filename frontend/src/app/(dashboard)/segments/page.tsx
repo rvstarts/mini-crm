@@ -126,7 +126,7 @@ export default function SegmentsPage() {
       setPreviewModalOpen(false);
       setPreviewSegmentData(null);
       refetch();
-      refetchOpp();
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
     } catch (e) {
       console.error(e);
     } finally {
