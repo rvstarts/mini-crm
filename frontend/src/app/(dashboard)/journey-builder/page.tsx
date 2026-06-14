@@ -235,7 +235,7 @@ const DelayNode = ({ data }: any) => {
   );
 };
 
-const EndNode = ({ _data }: any) => {
+const EndNode = () => {
   return (
     <div className="bg-white rounded-xl border-2 border-slate-200 border-dashed w-64 p-3 flex items-center justify-center relative shadow-sm">
       <Handle type="target" position={Position.Top} className="w-3 h-3 bg-blue-400 border-2 border-white shadow-sm" />
@@ -356,7 +356,7 @@ function JourneyBuilder() {
     try {
       const res = await api.get(`/journeys/${id}`);
       setDashboardData(res.data);
-    } catch (_err) {
+    } catch {
       showNotification("Failed to load dashboard.", "error");
     }
   };
@@ -368,7 +368,7 @@ function JourneyBuilder() {
       setActiveDashboardId(null);
       const resDrafts = await api.get('/journeys/');
       setDraftsList(resDrafts.data);
-    } catch (_e) {
+    } catch {
       showNotification("Failed to pause.", "error");
     }
   };
@@ -381,7 +381,7 @@ function JourneyBuilder() {
       setActiveDashboardId(null);
       const resDrafts = await api.get('/journeys/');
       setDraftsList(resDrafts.data);
-    } catch (_e) {
+    } catch {
       showNotification("Failed to delete.", "error");
     }
   };
@@ -480,7 +480,7 @@ function JourneyBuilder() {
       } else {
         showNotification("Failed to parse AI journey.", "error");
       }
-    } catch (_e) {
+    } catch {
       showNotification("Failed to generate AI journey.", "error");
     } finally {
       setIsGeneratingAI(false);
@@ -570,7 +570,7 @@ function JourneyBuilder() {
           const resDrafts = await api.get('/journeys/');
           setDraftsList(resDrafts.data);
           setActiveTab("Active Journeys");
-        } catch (_e) {
+        } catch {
           showNotification("Failed to activate journey.", "error");
         }
       }
@@ -1257,7 +1257,7 @@ function JourneyBuilder() {
                     if (n.type === 'abtest') return '#a855f7';
                     return '#cbd5e1';
                   }}
-                  nodeColor={(_n) => {
+                  nodeColor={() => {
                     return '#ffffff';
                   }}
                   maskColor="rgba(248, 250, 252, 0.7)"

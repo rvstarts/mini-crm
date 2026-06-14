@@ -427,7 +427,7 @@ export default function CampaignsPage() {
     try {
       await api.put(`/campaigns/${id}`, { status });
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-    } catch (_error) {
+    } catch {
       console.error("Failed to update campaign status");
     }
   }
@@ -684,7 +684,7 @@ export default function CampaignsPage() {
                                   try {
                                     await api.delete(`/campaigns/${camp.id}`);
                                     queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-                                  } catch (_error) {
+                                  } catch {
                                     console.error("Failed to delete campaign");
                                     alert("Failed to delete campaign.");
                                   }
@@ -866,7 +866,7 @@ export default function CampaignsPage() {
                                     setSelectedTemplateName(t.name);
                                     setSelectedTemplateId(t.id);
                                     toast.success("Template applied!");
-                                  } catch(_err) {
+                                  } catch {
                                     toast.error("Failed to load template");
                                   }
                                 }}

@@ -63,7 +63,7 @@ export default function AICommandCenterPage() {
         metrics: aiResponse.metrics,
         actions: aiResponse.actions
       }])
-    } catch (_error) {
+    } catch {
       setMessages(prev => [...prev, { role: 'ai', content: "Sorry, I encountered an error analyzing your request." }])
     }
   }
